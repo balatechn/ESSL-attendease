@@ -11,14 +11,14 @@ export async function POST(req: NextRequest) {
       return errorResponse("Seed data already exists. Delete all users first.");
     }
 
-    const adminPassword = await hashPassword("admin123");
+    const adminPassword = await hashPassword("Natty@2025!!");
     const userPassword = await hashPassword("user123");
 
     // Create admin
     const admin = await prisma.user.create({
       data: {
         name: "System Admin",
-        email: "admin@attendease.com",
+        email: "bpillai100@gmail.com",
         password: adminPassword,
         role: "ADMIN",
         department: "IT",
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     return successResponse({
       message: "Seed data created successfully",
       users: [
-        { email: "admin@attendease.com", password: "admin123", role: "ADMIN" },
+        { email: "bpillai100@gmail.com", password: "********", role: "ADMIN" },
         { email: "hr@attendease.com", password: "user123", role: "HR" },
         { email: "manager@attendease.com", password: "user123", role: "MANAGER" },
         { email: "john@attendease.com", password: "user123", role: "EMPLOYEE" },

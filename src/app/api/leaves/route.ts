@@ -7,6 +7,7 @@ import {
   isManager,
   isHR,
 } from "@/lib/api-utils";
+import { sendLeaveAppliedEmail } from "@/lib/email";
 
 export async function GET(req: NextRequest) {
   try {
@@ -133,6 +134,24 @@ export async function POST(req: NextRequest) {
           link: "/approvals",
         },
       });
+
+      // Send email to manager
+      const manager = await prisma.user.findUnique({
+        where: { id: user.managerId },
+        select: { email: true, name: true },
+      });
+      if (manager) {
+        sendLeaveAppliedEmail(
+          manager.email,
+          manager.name,
+          user.name!,
+          leaveType,
+          start.toISOString().split("T")[0],
+          end.toISOString().split("T")[0],
+          totalDays,
+          reason
+        );
+      }
     }
 
     return successResponse(leave, 201);

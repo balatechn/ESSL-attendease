@@ -7,6 +7,7 @@ import {
   isManager,
   isHR,
 } from "@/lib/api-utils";
+import { sendLeaveStatusEmail, sendLeaveToHREmail } from "@/lib/email";
 
 export async function PUT(
   req: NextRequest,
@@ -58,6 +59,18 @@ export async function PUT(
         },
       });
 
+      // Email employee about manager decision
+      const empUser = await prisma.user.findUnique({ where: { id: leave.userId }, select: { email: true, name: true } });
+      const mgrUser = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+      if (empUser) {
+        sendLeaveStatusEmail(
+          empUser.email, empUser.name, leave.leaveType,
+          leave.startDate.toISOString().split("T")[0],
+          leave.endDate.toISOString().split("T")[0],
+          leave.totalDays, newStatus, mgrUser?.name || "Manager", "Manager", note
+        );
+      }
+
       if (newStatus === "MANAGER_APPROVED" && leave.user.hrId) {
         await prisma.notification.create({
           data: {
@@ -68,6 +81,18 @@ export async function PUT(
             link: "/approvals",
           },
         });
+
+        // Email HR about pending approval
+        const hrUser = await prisma.user.findUnique({ where: { id: leave.user.hrId }, select: { email: true, name: true } });
+        if (hrUser) {
+          sendLeaveToHREmail(
+            hrUser.email, hrUser.name, leave.user.name,
+            leave.leaveType,
+            leave.startDate.toISOString().split("T")[0],
+            leave.endDate.toISOString().split("T")[0],
+            leave.totalDays, leave.reason
+          );
+        }
       }
 
       return successResponse({ status: newStatus });
@@ -137,6 +162,18 @@ export async function PUT(
           link: "/leaves",
         },
       });
+
+      // Email employee about HR decision
+      const empForHR = await prisma.user.findUnique({ where: { id: leave.userId }, select: { email: true, name: true } });
+      const hrActor = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+      if (empForHR) {
+        sendLeaveStatusEmail(
+          empForHR.email, empForHR.name, leave.leaveType,
+          leave.startDate.toISOString().split("T")[0],
+          leave.endDate.toISOString().split("T")[0],
+          leave.totalDays, newStatus, hrActor?.name || "HR", "HR", note
+        );
+      }
 
       return successResponse({ status: newStatus });
     }
