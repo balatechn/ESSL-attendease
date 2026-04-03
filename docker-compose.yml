@@ -1,0 +1,43 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://attendease:attendease_secret@db:5432/attendease?schema=public
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production-to-a-long-random-string}
+      - JWT_EXPIRES_IN=7d
+      - MSSQL_SERVER=${MSSQL_SERVER:-host.docker.internal}
+      - MSSQL_DATABASE=${MSSQL_DATABASE:-eSSL}
+      - MSSQL_USER=${MSSQL_USER:-sa}
+      - MSSQL_PASSWORD=${MSSQL_PASSWORD:-}
+      - MSSQL_PORT=${MSSQL_PORT:-1433}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - OFFICE_START_TIME=${OFFICE_START_TIME:-09:00}
+      - OFFICE_END_TIME=${OFFICE_END_TIME:-18:00}
+      - LATE_THRESHOLD_MINUTES=${LATE_THRESHOLD_MINUTES:-15}
+      - MAX_REGULARIZATIONS_PER_MONTH=${MAX_REGULARIZATIONS_PER_MONTH:-3}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: attendease
+      POSTGRES_PASSWORD: attendease_secret
+      POSTGRES_DB: attendease
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attendease"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

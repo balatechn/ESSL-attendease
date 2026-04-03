@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  HR
+  MANAGER
+  EMPLOYEE
+}
+
+enum ApprovalStatus {
+  PENDING
+  MANAGER_APPROVED
+  HR_APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveType {
+  CL
+  SL
+  EL
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  password       String
+  name           String
+  role           Role     @default(EMPLOYEE)
+  biometricId    String?  @unique
+  department     String?
+  designation    String?
+  joiningDate    DateTime?
+  phone          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  managerId      String?
+  manager        User?    @relation("ManagerRelation", fields: [managerId], references: [id])
+  subordinates   User[]   @relation("ManagerRelation")
+
+  hrId           String?
+  hr             User?    @relation("HRRelation", fields: [hrId], references: [id])
+  hrAssignees    User[]   @relation("HRRelation")
+
+  attendances         Attendance[]
+  regularizations     Regularization[]       @relation("RegularizationEmployee")
+  approvedRegManager  Regularization[]       @relation("RegularizationManager")
+  approvedRegHR       Regularization[]       @relation("RegularizationHR")
+
+  leaveApplications   LeaveApplication[]     @relation("LeaveEmployee")
+  approvedLeavesMgr   LeaveApplication[]     @relation("LeaveManager")
+  approvedLeavesHR    LeaveApplication[]     @relation("LeaveHR")
+
+  leaveBalances       LeaveBalance[]
+  notifications       Notification[]
+
+  @@map("users")
+}
+
+model Attendance {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  date          DateTime  @db.Date
+  firstIn       DateTime?
+  lastOut       DateTime?
+  totalHours    Float?
+  isLate        Boolean   @default(false)
+  lateMinutes   Int       @default(0)
+  status        String    @default("PRESENT")
+  source        String    @default("BIOMETRIC")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, date])
+  @@map("attendances")
+}
+
+model Regularization {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation("RegularizationEmployee", fields: [userId], references: [id])
+  date          DateTime       @db.Date
+  reason        String
+  requestedIn   DateTime?
+  requestedOut  DateTime?
+  status        ApprovalStatus @default(PENDING)
+
+  managerId     String?
+  manager       User?          @relation("RegularizationManager", fields: [managerId], references: [id])
+  managerNote   String?
+  managerActedAt DateTime?
+
+  hrId          String?
+  hr            User?          @relation("RegularizationHR", fields: [hrId], references: [id])
+  hrNote        String?
+  hrActedAt     DateTime?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("regularizations")
+}
+
+model LeaveApplication {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation("LeaveEmployee", fields: [userId], references: [id])
+  leaveType     LeaveType
+  startDate     DateTime       @db.Date
+  endDate       DateTime       @db.Date
+  totalDays     Float
+  reason        String
+  status        ApprovalStatus @default(PENDING)
+
+  managerId     String?
+  manager       User?          @relation("LeaveManager", fields: [managerId], references: [id])
+  managerNote   String?
+  managerActedAt DateTime?
+
+  hrId          String?
+  hr            User?          @relation("LeaveHR", fields: [hrId], references: [id])
+  hrNote        String?
+  hrActedAt     DateTime?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("leave_applications")
+}
+
+model LeaveBalance {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  year         Int
+  leaveType    LeaveType
+  total        Float
+  used         Float     @default(0)
+  remaining    Float
+
+  @@unique([userId, year, leaveType])
+  @@map("leave_balances")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+model AppConfig {
+  id        String @id @default(cuid())
+  key       String @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_config")
+}
